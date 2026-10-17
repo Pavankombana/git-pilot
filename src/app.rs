@@ -34,8 +34,10 @@ impl ActiveTab {
 pub enum InputMode {
     Normal,
     Search,
+    Help,
     NewBranch { buffer: String },
     NewWorktreePath { buffer: String },
+    CommitStaged { buffer: String },
     ConfirmDeleteBranch { branch: String },
     ConfirmDeleteWorktree { path: String },
 }

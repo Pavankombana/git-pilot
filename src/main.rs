@@ -217,6 +217,41 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                 }
                 _ => {}
             },
+            KeyCode::Char('a') => {
+                if app.active_tab == ActiveTab::Changes {
+                    let has_unstaged = app.files.iter().any(|f| f.unstaged_code != ' ' || f.staged_code == '?');
+                    if has_unstaged {
+                        match git::stage_all() {
+                            Ok(_) => {
+                                app.set_toast("Staged all changed files", false);
+                                app.refresh_all();
+                            }
+                            Err(e) => app.set_toast(format!("Failed to stage all: {}", e), true),
+                        }
+                    } else {
+                        match git::unstage_all() {
+                            Ok(_) => {
+                                app.set_toast("Unstaged all files", false);
+                                app.refresh_all();
+                            }
+                            Err(e) => app.set_toast(format!("Failed to unstage all: {}", e), true),
+                        }
+                    }
+                }
+            }
+            KeyCode::Char('c') => {
+                if app.active_tab == ActiveTab::Changes {
+                    let has_staged = app.files.iter().any(|f| f.staged_code != ' ' && f.staged_code != '?');
+                    if has_staged {
+                        app.input_mode = InputMode::CommitStaged { buffer: String::new() };
+                    } else {
+                        app.set_toast("No staged files to commit. Press [Space] or [a] to stage first.", true);
+                    }
+                }
+            }
+            KeyCode::Char('?') | KeyCode::Char('h') => {
+                app.input_mode = InputMode::Help;
+            }
             KeyCode::Esc => {
                 if !app.search_query.is_empty() {
                     app.search_query.clear();
@@ -240,6 +275,42 @@ fn handle_key_event(app: &mut App, code: KeyCode, modifiers: KeyModifiers) {
                 app.search_query.push(c);
                 app.apply_filter();
                 app.update_preview();
+            }
+            _ => {}
+        },
+
+        InputMode::Help => match code {
+            _ => {
+                app.input_mode = InputMode::Normal;
+            }
+        },
+
+        InputMode::CommitStaged { buffer } => match code {
+            KeyCode::Esc => {
+                app.input_mode = InputMode::Normal;
+            }
+            KeyCode::Backspace => {
+                buffer.pop();
+            }
+            KeyCode::Char(c) => {
+                buffer.push(c);
+            }
+            KeyCode::Enter => {
+                let msg = buffer.trim().to_string();
+                if msg.is_empty() {
+                    app.set_toast("Commit message cannot be empty", true);
+                } else {
+                    match git::commit_staged(&msg) {
+                        Ok(_) => {
+                            app.set_toast(format!("Committed: {}", msg), false);
+                            app.refresh_all();
+                        }
+                        Err(e) => {
+                            app.set_toast(format!("Commit failed: {}", e), true);
+                        }
+                    }
+                }
+                app.input_mode = InputMode::Normal;
             }
             _ => {}
         },

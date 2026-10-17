@@ -35,7 +35,7 @@ fn render_header(f: &mut Frame, app: &App, area: Rect) {
         .split(area);
 
     // Title & Repo Badge
-    let repo_title = format!(" ✈ GIT-PILOT | {} ", app.repo_name);
+    let repo_title = format!(" GIT-PILOT | {} ", app.repo_name);
     let title_block = Block::default()
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
@@ -109,14 +109,14 @@ fn render_left_panel(f: &mut Frame, app: &mut App, area: Rect) {
         let search_block = Block::default()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .title(" 🔍 Fuzzy Search (Esc to clear) ")
+            .title(" Filter (Esc to clear) ")
             .border_style(if matches!(app.input_mode, InputMode::Search) {
                 Style::default().fg(Color::Yellow)
             } else {
                 Style::default().fg(Color::DarkGray)
             });
 
-        let cursor_char = if matches!(app.input_mode, InputMode::Search) { "█" } else { "" };
+        let cursor_char = if matches!(app.input_mode, InputMode::Search) { "_" } else { "" };
         let search_text = format!(" {}{}", app.search_query, cursor_char);
         let search_paragraph = Paragraph::new(search_text)
             .block(search_block)
@@ -140,9 +140,9 @@ fn render_left_panel(f: &mut Frame, app: &mut App, area: Rect) {
                     let prefix = if b.is_head {
                         Span::styled("* ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD))
                     } else if b.is_remote {
-                        Span::styled("☁ ", Style::default().fg(Color::Blue))
+                        Span::styled("[r] ", Style::default().fg(Color::Blue))
                     } else {
-                        Span::styled("  ", Style::default())
+                        Span::styled("    ", Style::default())
                     };
 
                     let name_style = if b.is_head {
@@ -407,10 +407,10 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
         .split(area);
 
     let shortcuts_text = match app.active_tab {
-        ActiveTab::Branches => "[j/k]: Nav | [/]: Search | [Enter]: Switch | [b]: New Branch | [d]: Delete | [Tab]: Tab | [q]: Quit",
-        ActiveTab::Worktrees => "[j/k]: Nav | [/]: Search | [w]: New Worktree | [d]: Delete WT | [Tab]: Tab | [q]: Quit",
-        ActiveTab::Changes => "[j/k]: Nav | [/]: Search | [Space]: Stage/Unstage | [p]: Toggle Pane | [Tab]: Tab | [q]: Quit",
-        ActiveTab::Commits => "[j/k]: Nav | [/]: Search | [p]: Toggle Pane | [Tab]: Tab | [q]: Quit",
+        ActiveTab::Branches => "[j/k]: Nav | [/]: Search | [Enter]: Switch | [b]: New Branch | [d]: Delete | [?]: Help | [q]: Quit",
+        ActiveTab::Worktrees => "[j/k]: Nav | [/]: Search | [w]: New Worktree | [d]: Delete WT | [?]: Help | [q]: Quit",
+        ActiveTab::Changes => "[j/k]: Nav | [/]: Search | [Space]: Stage | [a]: All | [c]: Commit | [?]: Help | [q]: Quit",
+        ActiveTab::Commits => "[j/k]: Nav | [/]: Search | [p]: Toggle Pane | [?]: Help | [q]: Quit",
     };
 
     let helper = Paragraph::new(Span::styled(
@@ -425,7 +425,7 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
         } else {
             Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)
         };
-        let toast_p = Paragraph::new(Span::styled(format!("● {}", toast.message), toast_style))
+        let toast_p = Paragraph::new(Span::styled(format!("* {}", toast.message), toast_style))
             .alignment(Alignment::Right);
         f.render_widget(toast_p, chunks[1]);
     }
@@ -433,6 +433,68 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
 
 fn render_modals(f: &mut Frame, app: &App, size: Rect) {
     match &app.input_mode {
+        InputMode::Help => {
+            let area = centered_rect(70, 60, size);
+            f.render_widget(Clear, area);
+
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double)
+                .title(" GIT-PILOT Help & Shortcuts ")
+                .border_style(Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD));
+
+            let lines = vec![
+                Line::from(Span::styled("NAVIGATION & TABS", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))),
+                Line::from("  [1] - [4]           Switch directly to tab (Branches, Worktrees, Changes, Commits)"),
+                Line::from("  [Tab] / [Shift+Tab] Cycle between tabs"),
+                Line::from("  [j] / [k] / Arrows  Navigate list up and down"),
+                Line::from("  [p]                 Toggle focus to preview pane (use j/k to scroll diffs)"),
+                Line::from("  [PageUp] / [PageDn] Fast scroll preview pane"),
+                Line::from(""),
+                Line::from(Span::styled("ACTIONS BY TAB", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))),
+                Line::from("  Branches:   [Enter] Switch/checkout  |  [b] New branch  |  [d] Delete branch"),
+                Line::from("  Worktrees:  [w] New worktree         |  [d] Delete worktree"),
+                Line::from("  Changes:    [Space] Stage/Unstage    |  [a] Stage/Unstage all  |  [c] Commit staged"),
+                Line::from(""),
+                Line::from(Span::styled("GLOBAL CONTROLS", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))),
+                Line::from("  [/]                 Fuzzy search across active list"),
+                Line::from("  [r]                 Refresh repository status"),
+                Line::from("  [?] / [h]           Open this help window"),
+                Line::from("  [q] / [Ctrl+C]      Quit git-pilot"),
+                Line::from(""),
+                Line::from(Span::styled("Press [Esc], [q], or [Enter] to close", Style::default().fg(Color::DarkGray))),
+            ];
+
+            let p = Paragraph::new(lines).block(block);
+            f.render_widget(p, area);
+        }
+
+        InputMode::CommitStaged { buffer } => {
+            let area = centered_rect(65, 25, size);
+            f.render_widget(Clear, area);
+
+            let block = Block::default()
+                .borders(Borders::ALL)
+                .border_type(BorderType::Double)
+                .title(" Commit Staged Changes ")
+                .border_style(Style::default().fg(Color::Green).add_modifier(Modifier::BOLD));
+
+            let text = vec![
+                Line::from(Span::styled("Enter commit message:", Style::default().fg(Color::Gray))),
+                Line::from(""),
+                Line::from(vec![
+                    Span::styled("> ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
+                    Span::styled(buffer, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
+                    Span::styled("_", Style::default().fg(Color::Green)),
+                ]),
+                Line::from(""),
+                Line::from(Span::styled("[Enter] Commit  |  [Esc] Cancel", Style::default().fg(Color::DarkGray))),
+            ];
+
+            let p = Paragraph::new(text).block(block).alignment(Alignment::Center);
+            f.render_widget(p, area);
+        }
+
         InputMode::NewBranch { buffer } => {
             let area = centered_rect(60, 20, size);
             f.render_widget(Clear, area);
@@ -449,10 +511,10 @@ fn render_modals(f: &mut Frame, app: &App, size: Rect) {
                 Line::from(vec![
                     Span::styled("> ", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD)),
                     Span::styled(buffer, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-                    Span::styled("█", Style::default().fg(Color::Green)),
+                    Span::styled("_", Style::default().fg(Color::Green)),
                 ]),
                 Line::from(""),
-                Line::from(Span::styled("[Enter] Create  •  [Esc] Cancel", Style::default().fg(Color::DarkGray))),
+                Line::from(Span::styled("[Enter] Create  |  [Esc] Cancel", Style::default().fg(Color::DarkGray))),
             ];
 
             let p = Paragraph::new(text).block(block).alignment(Alignment::Center);
@@ -485,10 +547,10 @@ fn render_modals(f: &mut Frame, app: &App, size: Rect) {
                 Line::from(vec![
                     Span::styled("> ", Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)),
                     Span::styled(buffer, Style::default().fg(Color::White).add_modifier(Modifier::BOLD)),
-                    Span::styled("█", Style::default().fg(Color::Cyan)),
+                    Span::styled("_", Style::default().fg(Color::Cyan)),
                 ]),
                 Line::from(""),
-                Line::from(Span::styled("[Enter] Create  •  [Esc] Cancel", Style::default().fg(Color::DarkGray))),
+                Line::from(Span::styled("[Enter] Create  |  [Esc] Cancel", Style::default().fg(Color::DarkGray))),
             ];
 
             let p = Paragraph::new(text).block(block).alignment(Alignment::Center);
@@ -513,7 +575,7 @@ fn render_modals(f: &mut Frame, app: &App, size: Rect) {
                 Line::from(""),
                 Line::from(Span::styled("This action cannot be undone.", Style::default().fg(Color::Red))),
                 Line::from(""),
-                Line::from(Span::styled("[y / Enter] Delete  •  [n / Esc] Cancel", Style::default().fg(Color::Yellow))),
+                Line::from(Span::styled("[y / Enter] Delete  |  [n / Esc] Cancel", Style::default().fg(Color::Yellow))),
             ];
 
             let p = Paragraph::new(text).block(block).alignment(Alignment::Center);
@@ -536,7 +598,7 @@ fn render_modals(f: &mut Frame, app: &App, size: Rect) {
                     Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
                 )),
                 Line::from(""),
-                Line::from(Span::styled("[y / Enter] Remove  •  [n / Esc] Cancel", Style::default().fg(Color::Yellow))),
+                Line::from(Span::styled("[y / Enter] Remove  |  [n / Esc] Cancel", Style::default().fg(Color::Yellow))),
             ];
 
             let p = Paragraph::new(text).block(block).alignment(Alignment::Center);

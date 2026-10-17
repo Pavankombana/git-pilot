@@ -2,6 +2,13 @@
 name = "git-pilot"
 version = "0.1.0"
 edition = "2024"
+description = "Ultra-fast Git and Worktree Pilot Terminal User Interface (TUI) built in Rust"
+license = "MIT"
+authors = ["Pavan Kumar <pavankombana@users.noreply.github.com>"]
+repository = "https://github.com/Pavankombana/git-pilot"
+readme = "README.md"
+keywords = ["git", "tui", "ratatui", "worktree", "developer-tools"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0.104"

@@ -291,3 +291,15 @@ pub fn stage_file(path: &str) -> Result<String> {
 pub fn unstage_file(path: &str) -> Result<String> {
     run_git(&["restore", "--staged", "--", path])
 }
+
+pub fn stage_all() -> Result<String> {
+    run_git(&["add", "-A"])
+}
+
+pub fn unstage_all() -> Result<String> {
+    run_git(&["restore", "--staged", "."])
+}
+
+pub fn commit_staged(message: &str) -> Result<String> {
+    run_git(&["commit", "-m", message])
+}
