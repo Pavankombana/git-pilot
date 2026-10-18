@@ -105,6 +105,7 @@ cargo test
 cargo build
 ```
 
+## Made with ❤️ by Potato.
 ---
 
 ## License
